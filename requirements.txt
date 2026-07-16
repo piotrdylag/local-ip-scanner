@@ -1,0 +1,13 @@
+# Core dependencies for the Local Network IP Scanner
+#
+# scapy            -> fast, reliable ARP scanning to obtain MAC addresses
+#                     (requires administrator/root privileges to send raw packets)
+# mac-vendor-lookup -> offline OUI database used to resolve MAC -> vendor,
+#                     which drives the device-type detection
+#
+# Both are optional: the scanner degrades gracefully to an ICMP ping sweep
+# plus the operating-system ARP cache if they are not installed. Installing
+# them is strongly recommended for full functionality.
+
+scapy>=2.5.0
+mac-vendor-lookup>=0.1.12
