@@ -136,4 +136,9 @@ IP Address     MAC Address        Hostname         Vendor                Device 
 
 ## License
 
-Provided as-is for educational and authorised network-administration use.
+Released under the [MIT License](LICENSE) — free to use, modify and
+redistribute, provided the copyright notice is retained. The software comes
+with no warranty; see [`LICENSE`](LICENSE) for the full text.
+
+Intended for educational use and authorised network administration (see
+**Notes & legal** above).
