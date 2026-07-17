@@ -19,10 +19,14 @@ Two scanning strategies are used:
      cache -- used as a fallback that works without extra privileges/modules.
 
 Usage:
+    python ip_scanner.py                              # prompts for the subnet
     python ip_scanner.py 192.168.1.0/24
     python ip_scanner.py 192.168.1.0/24 --timeout 1.5 --workers 200
     python ip_scanner.py 10.0.0.0/24 --no-arp          # force ping sweep
     python ip_scanner.py 192.168.1.0/24 --json out.json
+
+Run with no arguments to be prompted for the subnet interactively; the local
+/24 is auto-detected and offered as the default (press Enter to accept).
 """
 
 import argparse
@@ -411,6 +415,66 @@ def print_table(results):
 
 
 # ---------------------------------------------------------------------------
+# Interactive subnet entry
+# ---------------------------------------------------------------------------
+def detect_local_subnet():
+    """Best-effort guess of the /24 this machine sits on ('' if undetectable).
+
+    Opens a UDP socket towards a public address to discover which local
+    interface the OS would route through. No packets are actually sent.
+    """
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.connect(("8.8.8.8", 80))
+            local_ip = sock.getsockname()[0]
+        finally:
+            sock.close()
+        return str(ipaddress.ip_network(f"{local_ip}/24", strict=False))
+    except Exception:
+        return ""
+
+
+def normalize_subnet(raw):
+    """Parse user input into a canonical CIDR string, or raise ValueError.
+
+    A bare address (e.g. '192.168.1.5') is treated as its /24 network.
+    """
+    raw = raw.strip()
+    if "/" not in raw:
+        raw += "/24"
+    return str(ipaddress.ip_network(raw, strict=False))
+
+
+def prompt_subnet():
+    """Ask for a subnet until the user gives a valid one. None if cancelled."""
+    default = detect_local_subnet()
+    while True:
+        try:
+            if default:
+                raw = input(
+                    f"{C.BOLD}Enter subnet to scan{C.RESET} "
+                    f"[{C.CYAN}{default}{C.RESET}]: "
+                ).strip()
+                raw = raw or default
+            else:
+                raw = input(
+                    f"{C.BOLD}Enter subnet to scan{C.RESET} "
+                    f"(e.g. 192.168.1.0/24): "
+                ).strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return None
+
+        if not raw:
+            continue
+        try:
+            return normalize_subnet(raw)
+        except ValueError as exc:
+            print(f"{C.RED}Invalid subnet: {exc}. Try again.{C.RESET}")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def parse_args(argv=None):
@@ -421,7 +485,10 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "subnet",
-        help="Subnet in CIDR notation, e.g. 192.168.1.0/24",
+        nargs="?",
+        default=None,
+        help="Subnet in CIDR notation, e.g. 192.168.1.0/24. "
+        "If omitted, you will be prompted for it.",
     )
     parser.add_argument(
         "--timeout",
@@ -451,11 +518,18 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
 
-    try:
-        ipaddress.ip_network(args.subnet, strict=False)
-    except ValueError as exc:
-        print(f"{C.RED}Invalid subnet '{args.subnet}': {exc}{C.RESET}")
-        return 2
+    if args.subnet is None:
+        # No subnet on the command line -> ask for it interactively.
+        subnet = prompt_subnet()
+        if subnet is None:
+            print(f"{C.YELLOW}Cancelled.{C.RESET}")
+            return 130
+    else:
+        try:
+            subnet = normalize_subnet(args.subnet)
+        except ValueError as exc:
+            print(f"{C.RED}Invalid subnet '{args.subnet}': {exc}{C.RESET}")
+            return 2
 
     if not MAC_LOOKUP_AVAILABLE:
         print(
@@ -470,7 +544,7 @@ def main(argv=None):
 
     start = time.time()
     results = scan_network(
-        args.subnet,
+        subnet,
         timeout=args.timeout,
         workers=args.workers,
         use_arp=not args.no_arp,

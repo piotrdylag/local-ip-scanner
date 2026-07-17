@@ -1,0 +1,10 @@
+# Normalise line endings: store everything as LF in the repository so that
+# editing on Windows (CRLF) does not show every line as changed in diffs.
+* text=auto eol=lf
+
+# Python sources are always LF.
+*.py text eol=lf
+
+# Docs / config.
+*.md text eol=lf
+*.txt text eol=lf

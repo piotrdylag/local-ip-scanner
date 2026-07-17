@@ -65,13 +65,36 @@ pip install -r requirements.txt
 
 ## Usage
 
+The scanner can be used interactively or with the subnet given up front.
+
+### Interactive mode (no arguments)
+
+Just run the script and it will ask for the subnet. Your local `/24` is
+auto-detected and offered as the default — press **Enter** to accept it:
+
+```console
+$ python ip_scanner.py
+Enter subnet to scan [192.168.1.0/24]:
+```
+
+You can type any subnet (`10.0.0.0/24`), or just a bare address like
+`192.168.1.5`, which is interpreted as its `/24` network. Invalid input simply
+re-prompts.
+
+### Direct mode (subnet as an argument)
+
 ```bash
 python ip_scanner.py <subnet>
 ```
 
+Handy for scripting, scheduled tasks and pipelines.
+
 ### Examples
 
 ```bash
+# Prompt for the subnet interactively
+python ip_scanner.py
+
 # Basic scan of a /24 network
 python ip_scanner.py 192.168.1.0/24
 
@@ -101,7 +124,7 @@ sweep and reads MAC addresses from the system ARP cache.
 
 | Option        | Description                                             | Default |
 |---------------|---------------------------------------------------------|---------|
-| `subnet`      | Subnet to scan in CIDR notation (positional, required)  | —       |
+| `subnet`      | Subnet to scan in CIDR notation (positional, **optional** — you are prompted for it if omitted) | prompt |
 | `--timeout`   | Per-host timeout in seconds                              | `1.0`   |
 | `--workers`   | Number of concurrent ping workers                       | `100`   |
 | `--no-arp`    | Disable the scapy ARP scan; use the ping sweep only     | off     |
